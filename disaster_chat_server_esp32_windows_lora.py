@@ -2,6 +2,7 @@ from flask import Flask, render_template_string, request, send_from_directory
 from flask_socketio import SocketIO, send, emit
 from datetime import datetime
 import os
+import random
 import json
 import serial
 
@@ -11,6 +12,7 @@ socketio = SocketIO(app, cors_allowed_origins='*', async_mode='threading')
 
 connected_clients = 0
 MESSAGE_LOG = 'chat_log.txt'
+usernames_by_ip = {}
 
 # Optional: Initialize serial communication with ESP32
 try:
@@ -90,6 +92,10 @@ HTML = '''
         button:hover {
             background-color: #2ea043;
         }
+        a {
+            color: #58a6ff;
+            text-decoration: none;
+        }
     </style>
 </head>
 <body>
@@ -107,27 +113,22 @@ HTML = '''
 
     <script src="/static/js/socket.io.min.js"></script>
     <script>
+        if (!localStorage.getItem("nickname")) {
+            const nick = prompt("Enter your nickname:");
+            localStorage.setItem("nickname", nick);
+        }
+
         var socket = io('http://IP:5000', {
             transports: ['polling'],
             withCredentials: true
         });
+
         var messages = document.getElementById('messages');
         var userCount = document.getElementById('userCount');
 
-        // Prompt for nickname if not saved
-        if (!localStorage.getItem("nickname")) {
-            const nick = prompt("Enter your nickname:");
-            if (nick && nick.trim() !== "") {
-                localStorage.setItem("nickname", nick.trim());
-            } else {
-                localStorage.setItem("nickname", "Anonymous_" + Math.floor(Math.random() * 10000));
-            }
-        }
-        const nickname = localStorage.getItem("nickname");
-
         socket.on('message', function(msg) {
             var item = document.createElement('div');
-            item.textContent = msg;
+            item.innerHTML = formatSpecialCommands(msg);
             messages.appendChild(item);
             messages.scrollTop = messages.scrollHeight;
         });
@@ -139,7 +140,7 @@ HTML = '''
         socket.on('chat_history', function(history) {
             history.forEach(function(msg) {
                 var item = document.createElement('div');
-                item.textContent = msg;
+                item.innerHTML = formatSpecialCommands(msg);
                 messages.appendChild(item);
             });
             messages.scrollTop = messages.scrollHeight;
@@ -149,21 +150,24 @@ HTML = '''
             var input = document.getElementById("myMessage");
             var msg = input.value.trim();
             if (msg !== '') {
-                navigator.geolocation.getCurrentPosition(function(position) {
-                    const data = {
-                        nickname: nickname,
-                        text: msg,
-                        location: {
-                            lat: position.coords.latitude,
-                            lon: position.coords.longitude
-                        }
-                    };
-                    socket.send(JSON.stringify(data));
-                }, function() {
-                    socket.send(JSON.stringify({ nickname: nickname, text: msg }));
-                });
+                socket.send(JSON.stringify({ text: msg }));
                 input.value = '';
             }
+        }
+
+        function formatSpecialCommands(text) {
+            const mapCommandRegex = /\/map\s+(-?\\d+\\.\\d+),(-?\\d+\\.\\d+)/;
+            const match = text.match(mapCommandRegex);
+
+            if (match) {
+                const lat = match[1];
+                const lon = match[2];
+                const mapURL = `https://maps.google.com/?q=${lat},${lon}`;
+                const mapLink = `<a href="${mapURL}" target="_blank">View Location on Map</a>`;
+                return text.replace(mapCommandRegex, mapLink);
+            }
+
+            return text;
         }
     </script>
 </body>
@@ -184,6 +188,10 @@ def handle_connect():
     connected_clients += 1
     emit('user_count', connected_clients, broadcast=True)
 
+    user_ip = request.remote_addr
+    if user_ip not in usernames_by_ip:
+        usernames_by_ip[user_ip] = f"User_{random.randint(1000, 9999)}"
+
     if os.path.exists(MESSAGE_LOG):
         with open(MESSAGE_LOG, 'r') as f:
             history = [line.strip() for line in f.readlines()[-50:]]
@@ -197,19 +205,16 @@ def handle_disconnect():
 
 @socketio.on('message')
 def handle_message(data):
+    user_ip = request.remote_addr
+    username = usernames_by_ip.get(user_ip, "Unknown")
     timestamp = datetime.now().strftime('%H:%M')
 
     try:
         msg_data = json.loads(data)
         msg_text = msg_data.get('text', '')
-        nickname = msg_data.get('nickname', 'Unknown')
-        location = msg_data.get('location')
-        if location:
-            formatted_msg = f'[{timestamp}] ({nickname} @ {location["lat"]:.4f},{location["lon"]:.4f}): {msg_text}'
-        else:
-            formatted_msg = f'[{timestamp}] ({nickname}): {msg_text}'
+        formatted_msg = f'[{timestamp}] ({username}): {msg_text}'
     except json.JSONDecodeError:
-        formatted_msg = f'[{timestamp}] (Unknown): {data}'
+        formatted_msg = f'[{timestamp}] ({username}): {data}'
 
     print(f'Message: {formatted_msg}')
     with open(MESSAGE_LOG, 'a') as f:
