@@ -13,7 +13,8 @@
 ---
 
 
-<img src="https://github.com/user-attachments/assets/34702c26-25b8-4468-a75f-cfb9195c8979" width="400"/>
+<img src="https://github.com/user-attachments/assets/045ac784-d472-43e2-a0ff-26c2a529b878" width="400"/>
+
 
 *Demo: Chatting between two local clients over LAN + ESP32 fallback*
 
