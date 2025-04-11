@@ -120,7 +120,7 @@ HTML = '''
 
     <script src="/static/js/socket.io.min.js"></script>
     <script>
-        var socket = io('http://192.168.137.1:5000', {
+        var socket = io('http://IP:5000', {
             transports: ['polling'],
             withCredentials: true
         });
@@ -271,4 +271,4 @@ def handle_message(data):
     send(formatted_msg, broadcast=True)
 
 if __name__ == '__main__':
-    socketio.run(app, host='192.168.137.1', port=5000)
+    socketio.run(app, host='IP', port=5000)
