@@ -12,7 +12,8 @@ socketio = SocketIO(app, cors_allowed_origins='*', async_mode='threading')
 
 connected_sessions = set()
 MESSAGE_LOG = 'chat_log.txt'
-usernames_by_ip = {}
+usernames_by_sid = {}
+user_ips = {}
 
 # Optional: Initialize serial communication with ESP32
 try:
@@ -148,19 +149,24 @@ HTML = '''
             var nick = localStorage.getItem("nickname") || "Anon";
 
             if (msg !== '') {
-                navigator.geolocation.getCurrentPosition(function(position) {
-                    const data = {
-                        text: msg,
-                        location: {
-                            lat: position.coords.latitude,
-                            lon: position.coords.longitude
-                        },
-                        nickname: nick
-                    };
-                    socket.send(JSON.stringify(data));
-                }, function() {
+                if (msg.startsWith("/map")) {
+                    navigator.geolocation.getCurrentPosition(function(position) {
+                        const data = {
+                            text: msg,
+                            location: {
+                                lat: position.coords.latitude,
+                                lon: position.coords.longitude
+                            },
+                            nickname: nick
+                        };
+                        socket.send(JSON.stringify(data));
+                    }, function() {
+                        socket.send(JSON.stringify({ text: msg, nickname: nick }));
+                    });
+                } else {
                     socket.send(JSON.stringify({ text: msg, nickname: nick }));
-                });
+                }
+
                 input.value = '';
             }
         }
@@ -180,10 +186,12 @@ def server_static_js():
 @socketio.on('connect')
 def handle_connect():
     connected_sessions.add(request.sid)
-
     user_ip = request.remote_addr
-    if user_ip not in usernames_by_ip:
-        usernames_by_ip[user_ip] = f"User_{random.randint(1000, 9999)}"
+
+    if user_ip not in user_ips:
+        user_ips[user_ip] = f"User_{random.randint(1000, 9999)}"
+
+    usernames_by_sid[request.sid] = user_ips[user_ip]
 
     if os.path.exists(MESSAGE_LOG):
         with open(MESSAGE_LOG, 'r') as f:
@@ -195,30 +203,31 @@ def handle_connect():
 @socketio.on('disconnect')
 def handle_disconnect():
     connected_sessions.discard(request.sid)
+    usernames_by_sid.pop(request.sid, None)
     emit('user_count', len(connected_sessions), broadcast=True)
 
 @socketio.on('message')
 def handle_message(data):
-    user_ip = request.remote_addr
-    username = usernames_by_ip.get(user_ip, "Unknown")
     timestamp = datetime.now().strftime('%H:%M')
 
     try:
         msg_data = json.loads(data)
-        msg_text = msg_data.get('text', '')
-        nickname = msg_data.get('nickname', username)
+        text = msg_data.get('text', '')
+        nickname = msg_data.get('nickname', 'Unknown')
         location = msg_data.get('location')
 
-        if msg_text.startswith('/map') and location:
-            map_url = f"https://maps.google.com/?q={location['lat']},{location['lon']}"
-            formatted_msg = f'[{timestamp}] <b>{nickname}</b>: <a href="{map_url}" target="_blank">📍 View on Map</a>'
+        if text.startswith('/map') and location:
+            lat = location['lat']
+            lon = location['lon']
+            map_link = f'https://maps.google.com/?q={lat},{lon}'
+            formatted_msg = f'[{timestamp}] <b>{nickname}</b>: <a href="{map_link}" target="_blank">📍 View My Location</a>'
         else:
-            formatted_msg = f'[{timestamp}] <b>{nickname}</b>: {msg_text}'
+            formatted_msg = f'[{timestamp}] <b>{nickname}</b>: {text}'
 
-    except json.JSONDecodeError:
-        formatted_msg = f'[{timestamp}] <b>{username}</b>: {data}'
+    except Exception as e:
+        print("JSON parse error:", e)
+        formatted_msg = f'[{timestamp}] <b>Unknown</b>: {data}'
 
-    print(f'Message: {formatted_msg}')
     with open(MESSAGE_LOG, 'a') as f:
         f.write(formatted_msg + '\n')
 
@@ -226,7 +235,7 @@ def handle_message(data):
         try:
             esp_serial.write((formatted_msg + '\n').encode())
         except Exception as e:
-            print("Failed to send to ESP32:", e)
+            print("ESP32 error:", e)
 
     send(formatted_msg, broadcast=True)
 
