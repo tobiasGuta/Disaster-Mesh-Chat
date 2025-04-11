@@ -1,3 +1,30 @@
+this is where is located :
+
+ ls
+
+    Directory: C:\Users\Guttman\Desktop
+
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d----           4/11/2025  1:21 PM                static
+d----           4/11/2025 12:38 PM                tool
+d----           4/11/2025 12:44 PM                uploads
+-a---           4/11/2025  1:35 PM           8831 disaster_chat_server_esp32.py
+
+ dir .\static\js\
+
+    Directory: C:\Users\Guttman\Desktop\static\js
+
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a---           4/11/2025  1:21 PM          44196 socket.io.min.js
+
+
+and this si the code
+
+
+
+
 from flask import Flask, render_template_string, request, send_from_directory
 from flask_socketio import SocketIO, send, emit
 from datetime import datetime
@@ -216,8 +243,8 @@ def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 @app.route('/static/js/socket.io.min.js')
-def server_static_js(filename):
-    return send_from_directory('/static/js/', filename)
+def server_static_js():
+    return send_from_directory('/static/js/', 'socket.io.min.js')
 
 @socketio.on('connect')
 def handle_connect():
