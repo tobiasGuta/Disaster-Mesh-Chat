@@ -1,54 +1,10 @@
 from flask import Flask, render_template_string, request, send_from_directory
 from flask_socketio import SocketIO, send, emit
-from datetime import datetime, timedelta
+from datetime import datetime
 import os
 import random
 import json
 import serial
-import socket
-
-from cryptography import x509
-from cryptography.x509.oid import NameOID
-from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import rsa
-
-# SSL certificate generator
-def generate_self_signed_cert(cert_file="cert.pem", key_file="key.pem"):
-    if os.path.exists(cert_file) and os.path.exists(key_file):
-        return cert_file, key_file
-
-    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-
-    subject = issuer = x509.Name([
-        x509.NameAttribute(NameOID.COUNTRY_NAME, "US"),
-        x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, "Offline"),
-        x509.NameAttribute(NameOID.LOCALITY_NAME, "DisasterMesh"),
-        x509.NameAttribute(NameOID.ORGANIZATION_NAME, "MeshComm"),
-        x509.NameAttribute(NameOID.COMMON_NAME, "mesh.local"),
-    ])
-    cert = (
-        x509.CertificateBuilder()
-        .subject_name(subject)
-        .issuer_name(issuer)
-        .public_key(key.public_key())
-        .serial_number(x509.random_serial_number())
-        .not_valid_before(datetime.utcnow())
-        .not_valid_after(datetime.utcnow() + timedelta(days=365))
-        .add_extension(x509.SubjectAlternativeName([x509.DNSName("localhost")]), critical=False)
-        .sign(key, hashes.SHA256())
-    )
-
-    with open(cert_file, "wb") as f:
-        f.write(cert.public_bytes(serialization.Encoding.PEM))
-    with open(key_file, "wb") as f:
-        f.write(key.private_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PrivateFormat.TraditionalOpenSSL,
-            encryption_algorithm=serialization.NoEncryption()
-        ))
-
-    return cert_file, key_file
-
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'
@@ -58,14 +14,151 @@ connected_clients = 0
 MESSAGE_LOG = 'chat_log.txt'
 usernames_by_ip = {}
 
-# Optional: Serial connection to ESP32
+# Optional: Initialize serial communication with ESP32
 try:
     esp_serial = serial.Serial('/dev/ttyUSB0', 9600, timeout=1)
 except Exception as e:
     esp_serial = None
     print("ESP32 not connected or not found:", e)
 
-HTML = '''...'''  # Keep your full HTML string here (unchanged)
+HTML = '''
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emergency Mesh Chat</title>
+    <style>
+        body {
+            background-color: #0d1117;
+            color: #c9d1d9;
+            font-family: 'Courier New', Courier, monospace;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        header {
+            padding: 1rem;
+            background-color: #161b22;
+            border-bottom: 1px solid #30363d;
+            text-align: center;
+        }
+        header h1 {
+            margin: 0;
+            font-size: 1.5rem;
+        }
+        #status {
+            padding: 0.5rem;
+            background-color: #161b22;
+            text-align: center;
+            border-bottom: 1px solid #30363d;
+        }
+        #messages {
+            flex: 1;
+            padding: 1rem;
+            overflow-y: auto;
+            background-color: #0d1117;
+        }
+        #inputArea {
+            display: flex;
+            flex-direction: column;
+            padding: 1rem;
+            background-color: #161b22;
+            border-top: 1px solid #30363d;
+        }
+        .row {
+            display: flex;
+            margin-top: 0.5rem;
+        }
+        input[type="text"] {
+            flex: 1;
+            padding: 0.5rem;
+            background-color: #0d1117;
+            color: #c9d1d9;
+            border: 1px solid #30363d;
+            border-radius: 5px;
+            margin-right: 0.5rem;
+        }
+        button {
+            padding: 0.5rem 1rem;
+            background-color: #238636;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #2ea043;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🛡️ Disaster NYC Plan</h1>
+    </header>
+    <div id="status">Connected Users: <span id="userCount">0</span></div>
+    <div id="messages"></div>
+    <div id="inputArea">
+        <div class="row">
+            <input id="myMessage" autocomplete="off" placeholder="Type your message..." type="text" />
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <script src="/static/js/socket.io.min.js"></script>
+    <script>
+        var socket = io('http://IP:5000', {
+            transports: ['polling'],
+            withCredentials: true
+        });
+        var messages = document.getElementById('messages');
+        var userCount = document.getElementById('userCount');
+
+        socket.on('message', function(msg) {
+            var item = document.createElement('div');
+            item.textContent = msg;
+            messages.appendChild(item);
+            messages.scrollTop = messages.scrollHeight;
+        });
+
+        socket.on('user_count', function(count) {
+            userCount.textContent = count;
+        });
+
+        socket.on('chat_history', function(history) {
+            history.forEach(function(msg) {
+                var item = document.createElement('div');
+                item.textContent = msg;
+                messages.appendChild(item);
+            });
+            messages.scrollTop = messages.scrollHeight;
+        });
+
+        function sendMessage() {
+            var input = document.getElementById("myMessage");
+            var msg = input.value.trim();
+            if (msg !== '') {
+                navigator.geolocation.getCurrentPosition(function(position) {
+                    const data = {
+                        text: msg,
+                        location: {
+                            lat: position.coords.latitude,
+                            lon: position.coords.longitude
+                        }
+                    };
+                    socket.send(JSON.stringify(data));
+                }, function() {
+                    socket.send(JSON.stringify({ text: msg }));
+                });
+                input.value = '';
+            }
+        }
+    </script>
+</body>
+</html>
+'''
 
 @app.route('/')
 def index():
@@ -105,7 +198,11 @@ def handle_message(data):
     try:
         msg_data = json.loads(data)
         msg_text = msg_data.get('text', '')
-        formatted_msg = f'[{timestamp}] ({username}): {msg_text}'
+        location = msg_data.get('location')
+        if location:
+            formatted_msg = f'[{timestamp}] ({username} @ {location["lat"]:.4f},{location["lon"]:.4f}): {msg_text}'
+        else:
+            formatted_msg = f'[{timestamp}] ({username}): {msg_text}'
     except json.JSONDecodeError:
         formatted_msg = f'[{timestamp}] ({username}): {data}'
 
@@ -121,9 +218,5 @@ def handle_message(data):
 
     send(formatted_msg, broadcast=True)
 
-
 if __name__ == '__main__':
-    cert_file, key_file = generate_self_signed_cert()
-    ip_addr = socket.gethostbyname(socket.gethostname())
-    print(f"🔐 HTTPS server running at: https://{ip_addr}:5000")
-    socketio.run(app, host='0.0.0.0', port=5000, ssl_context=(cert_file, key_file))
+    socketio.run(app, host='IP', port=5000)
