@@ -108,6 +108,10 @@ This prototype does not encrypt messages. For real deployments:
 
 - BLE fallback or QR-code pairing
 
+### Example
+
+- This is a demonstration of how I want to apply this project using the ESP32 and LoRa: https://youtu.be/9azEfCQNhSA
+
 ### 🤝 Contributing
 PRs, bug reports, and feedback welcome!
 Let's make communication resilient AF ⚡
