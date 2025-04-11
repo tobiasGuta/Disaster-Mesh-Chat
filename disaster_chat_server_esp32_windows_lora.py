@@ -59,7 +59,6 @@ HTML = '''
             flex: 1;
             padding: 1rem;
             overflow-y: auto;
-            background-color: #0d1117;
         }
         #inputArea {
             display: flex;
@@ -104,6 +103,7 @@ HTML = '''
         <div class="row">
             <input id="myMessage" autocomplete="off" placeholder="Type your message..." type="text" />
             <button onclick="sendMessage()">Send</button>
+            <button onclick="shareLocation()">📍 Share Location</button>
         </div>
     </div>
 
@@ -140,20 +140,21 @@ HTML = '''
             var input = document.getElementById("myMessage");
             var msg = input.value.trim();
             if (msg !== '') {
-                navigator.geolocation.getCurrentPosition(function(position) {
-                    const data = {
-                        text: msg,
-                        location: {
-                            lat: position.coords.latitude,
-                            lon: position.coords.longitude
-                        }
-                    };
-                    socket.send(JSON.stringify(data));
-                }, function() {
-                    socket.send(JSON.stringify({ text: msg }));
-                });
+                socket.send(JSON.stringify({ text: msg }));
                 input.value = '';
             }
+        }
+
+        function shareLocation() {
+            navigator.geolocation.getCurrentPosition(function(position) {
+                const lat = position.coords.latitude.toFixed(4);
+                const lon = position.coords.longitude.toFixed(4);
+                const url = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}`;
+                const msg = `shared location: ${url}`;
+                socket.send(JSON.stringify({ text: msg }));
+            }, function() {
+                alert("Could not retrieve location.");
+            });
         }
     </script>
 </body>
@@ -198,11 +199,7 @@ def handle_message(data):
     try:
         msg_data = json.loads(data)
         msg_text = msg_data.get('text', '')
-        location = msg_data.get('location')
-        if location:
-            formatted_msg = f'[{timestamp}] ({username} @ {location["lat"]:.4f},{location["lon"]:.4f}): {msg_text}'
-        else:
-            formatted_msg = f'[{timestamp}] ({username}): {msg_text}'
+        formatted_msg = f'[{timestamp}] ({username}): {msg_text}'
     except json.JSONDecodeError:
         formatted_msg = f'[{timestamp}] ({username}): {data}'
 
