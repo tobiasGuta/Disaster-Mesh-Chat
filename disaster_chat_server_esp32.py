@@ -11,7 +11,7 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'
 app.config['UPLOAD_FOLDER'] = 'uploads'
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-socketio = SocketIO(app, cors_allowed_origins='*')
+socketio = SocketIO(app, cors_allowed_origins='*', async_mode='threading')
 
 connected_clients = 0
 MESSAGE_LOG = 'chat_log.txt'
@@ -118,9 +118,12 @@ HTML = '''
         </div>
     </div>
 
-    <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <script>
-        var socket = io();
+        var socket = io('http://192.168.137.1:5000', {
+            transports: ['polling'],
+            withCredentials: true
+        });
         var messages = document.getElementById('messages');
         var userCount = document.getElementById('userCount');
 
