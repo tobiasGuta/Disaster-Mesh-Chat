@@ -10,7 +10,7 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'
 socketio = SocketIO(app, cors_allowed_origins='*', async_mode='threading')
 
-connected_clients = 0
+connected_sessions = set()
 MESSAGE_LOG = 'chat_log.txt'
 usernames_by_ip = {}
 
@@ -92,10 +92,6 @@ HTML = '''
         button:hover {
             background-color: #2ea043;
         }
-        a {
-            color: #58a6ff;
-            text-decoration: none;
-        }
     </style>
 </head>
 <body>
@@ -128,7 +124,7 @@ HTML = '''
 
         socket.on('message', function(msg) {
             var item = document.createElement('div');
-            item.innerHTML = formatSpecialCommands(msg);
+            item.innerHTML = msg;
             messages.appendChild(item);
             messages.scrollTop = messages.scrollHeight;
         });
@@ -140,7 +136,7 @@ HTML = '''
         socket.on('chat_history', function(history) {
             history.forEach(function(msg) {
                 var item = document.createElement('div');
-                item.innerHTML = formatSpecialCommands(msg);
+                item.innerHTML = msg;
                 messages.appendChild(item);
             });
             messages.scrollTop = messages.scrollHeight;
@@ -149,25 +145,24 @@ HTML = '''
         function sendMessage() {
             var input = document.getElementById("myMessage");
             var msg = input.value.trim();
+            var nick = localStorage.getItem("nickname") || "Anon";
+
             if (msg !== '') {
-                socket.send(JSON.stringify({ text: msg }));
+                navigator.geolocation.getCurrentPosition(function(position) {
+                    const data = {
+                        text: msg,
+                        location: {
+                            lat: position.coords.latitude,
+                            lon: position.coords.longitude
+                        },
+                        nickname: nick
+                    };
+                    socket.send(JSON.stringify(data));
+                }, function() {
+                    socket.send(JSON.stringify({ text: msg, nickname: nick }));
+                });
                 input.value = '';
             }
-        }
-
-        function formatSpecialCommands(text) {
-            const mapCommandRegex = /\/map\s+(-?\\d+\\.\\d+),(-?\\d+\\.\\d+)/;
-            const match = text.match(mapCommandRegex);
-
-            if (match) {
-                const lat = match[1];
-                const lon = match[2];
-                const mapURL = `https://maps.google.com/?q=${lat},${lon}`;
-                const mapLink = `<a href="${mapURL}" target="_blank">View Location on Map</a>`;
-                return text.replace(mapCommandRegex, mapLink);
-            }
-
-            return text;
         }
     </script>
 </body>
@@ -184,9 +179,7 @@ def server_static_js():
 
 @socketio.on('connect')
 def handle_connect():
-    global connected_clients
-    connected_clients += 1
-    emit('user_count', connected_clients, broadcast=True)
+    connected_sessions.add(request.sid)
 
     user_ip = request.remote_addr
     if user_ip not in usernames_by_ip:
@@ -197,11 +190,12 @@ def handle_connect():
             history = [line.strip() for line in f.readlines()[-50:]]
         emit('chat_history', history)
 
+    emit('user_count', len(connected_sessions), broadcast=True)
+
 @socketio.on('disconnect')
 def handle_disconnect():
-    global connected_clients
-    connected_clients = max(0, connected_clients - 1)
-    emit('user_count', connected_clients, broadcast=True)
+    connected_sessions.discard(request.sid)
+    emit('user_count', len(connected_sessions), broadcast=True)
 
 @socketio.on('message')
 def handle_message(data):
@@ -212,9 +206,17 @@ def handle_message(data):
     try:
         msg_data = json.loads(data)
         msg_text = msg_data.get('text', '')
-        formatted_msg = f'[{timestamp}] ({username}): {msg_text}'
+        nickname = msg_data.get('nickname', username)
+        location = msg_data.get('location')
+
+        if msg_text.startswith('/map') and location:
+            map_url = f"https://maps.google.com/?q={location['lat']},{location['lon']}"
+            formatted_msg = f'[{timestamp}] <b>{nickname}</b>: <a href="{map_url}" target="_blank">📍 View on Map</a>'
+        else:
+            formatted_msg = f'[{timestamp}] <b>{nickname}</b>: {msg_text}'
+
     except json.JSONDecodeError:
-        formatted_msg = f'[{timestamp}] ({username}): {data}'
+        formatted_msg = f'[{timestamp}] <b>{username}</b>: {data}'
 
     print(f'Message: {formatted_msg}')
     with open(MESSAGE_LOG, 'a') as f:
