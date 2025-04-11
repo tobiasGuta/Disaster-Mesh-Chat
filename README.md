@@ -12,7 +12,8 @@
 
 ---
 
-![Disaster Mesh Chat Demo](demo.gif)  
+![image](https://github.com/user-attachments/assets/34702c26-25b8-4468-a75f-cfb9195c8979)
+ 
 *Demo: Chatting between two local clients over LAN + ESP32 fallback*
 
 ---
