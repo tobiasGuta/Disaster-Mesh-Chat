@@ -10,10 +10,9 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'
 socketio = SocketIO(app, cors_allowed_origins='*', async_mode='threading')
 
-connected_sessions = set()
+connected_clients = 0
 MESSAGE_LOG = 'chat_log.txt'
-usernames_by_sid = {}
-user_ips = {}
+usernames_by_ip = {}
 
 # Optional: Initialize serial communication with ESP32
 try:
@@ -110,22 +109,16 @@ HTML = '''
 
     <script src="/static/js/socket.io.min.js"></script>
     <script>
-        if (!localStorage.getItem("nickname")) {
-            const nick = prompt("Enter your nickname:");
-            localStorage.setItem("nickname", nick);
-        }
-
         var socket = io('http://IP:5000', {
             transports: ['polling'],
             withCredentials: true
         });
-
         var messages = document.getElementById('messages');
         var userCount = document.getElementById('userCount');
 
         socket.on('message', function(msg) {
             var item = document.createElement('div');
-            item.innerHTML = msg;
+            item.textContent = msg;
             messages.appendChild(item);
             messages.scrollTop = messages.scrollHeight;
         });
@@ -137,7 +130,7 @@ HTML = '''
         socket.on('chat_history', function(history) {
             history.forEach(function(msg) {
                 var item = document.createElement('div');
-                item.innerHTML = msg;
+                item.textContent = msg;
                 messages.appendChild(item);
             });
             messages.scrollTop = messages.scrollHeight;
@@ -146,27 +139,19 @@ HTML = '''
         function sendMessage() {
             var input = document.getElementById("myMessage");
             var msg = input.value.trim();
-            var nick = localStorage.getItem("nickname") || "Anon";
-
             if (msg !== '') {
-                if (msg.startsWith("/map")) {
-                    navigator.geolocation.getCurrentPosition(function(position) {
-                        const data = {
-                            text: msg,
-                            location: {
-                                lat: position.coords.latitude,
-                                lon: position.coords.longitude
-                            },
-                            nickname: nick
-                        };
-                        socket.send(JSON.stringify(data));
-                    }, function() {
-                        socket.send(JSON.stringify({ text: msg, nickname: nick }));
-                    });
-                } else {
-                    socket.send(JSON.stringify({ text: msg, nickname: nick }));
-                }
-
+                navigator.geolocation.getCurrentPosition(function(position) {
+                    const data = {
+                        text: msg,
+                        location: {
+                            lat: position.coords.latitude,
+                            lon: position.coords.longitude
+                        }
+                    };
+                    socket.send(JSON.stringify(data));
+                }, function() {
+                    socket.send(JSON.stringify({ text: msg }));
+                });
                 input.value = '';
             }
         }
@@ -185,49 +170,43 @@ def server_static_js():
 
 @socketio.on('connect')
 def handle_connect():
-    connected_sessions.add(request.sid)
+    global connected_clients
+    connected_clients += 1
+    emit('user_count', connected_clients, broadcast=True)
+
     user_ip = request.remote_addr
-
-    if user_ip not in user_ips:
-        user_ips[user_ip] = f"User_{random.randint(1000, 9999)}"
-
-    usernames_by_sid[request.sid] = user_ips[user_ip]
+    if user_ip not in usernames_by_ip:
+        usernames_by_ip[user_ip] = f"User_{random.randint(1000, 9999)}"
 
     if os.path.exists(MESSAGE_LOG):
         with open(MESSAGE_LOG, 'r') as f:
             history = [line.strip() for line in f.readlines()[-50:]]
         emit('chat_history', history)
 
-    emit('user_count', len(connected_sessions), broadcast=True)
-
 @socketio.on('disconnect')
 def handle_disconnect():
-    connected_sessions.discard(request.sid)
-    usernames_by_sid.pop(request.sid, None)
-    emit('user_count', len(connected_sessions), broadcast=True)
+    global connected_clients
+    connected_clients = max(0, connected_clients - 1)
+    emit('user_count', connected_clients, broadcast=True)
 
 @socketio.on('message')
 def handle_message(data):
+    user_ip = request.remote_addr
+    username = usernames_by_ip.get(user_ip, "Unknown")
     timestamp = datetime.now().strftime('%H:%M')
 
     try:
         msg_data = json.loads(data)
-        text = msg_data.get('text', '')
-        nickname = msg_data.get('nickname', 'Unknown')
+        msg_text = msg_data.get('text', '')
         location = msg_data.get('location')
-
-        if text.startswith('/map') and location:
-            lat = location['lat']
-            lon = location['lon']
-            map_link = f'https://maps.google.com/?q={lat},{lon}'
-            formatted_msg = f'[{timestamp}] <b>{nickname}</b>: <a href="{map_link}" target="_blank">📍 View My Location</a>'
+        if location:
+            formatted_msg = f'[{timestamp}] ({username} @ {location["lat"]:.4f},{location["lon"]:.4f}): {msg_text}'
         else:
-            formatted_msg = f'[{timestamp}] <b>{nickname}</b>: {text}'
+            formatted_msg = f'[{timestamp}] ({username}): {msg_text}'
+    except json.JSONDecodeError:
+        formatted_msg = f'[{timestamp}] ({username}): {data}'
 
-    except Exception as e:
-        print("JSON parse error:", e)
-        formatted_msg = f'[{timestamp}] <b>Unknown</b>: {data}'
-
+    print(f'Message: {formatted_msg}')
     with open(MESSAGE_LOG, 'a') as f:
         f.write(formatted_msg + '\n')
 
@@ -235,7 +214,7 @@ def handle_message(data):
         try:
             esp_serial.write((formatted_msg + '\n').encode())
         except Exception as e:
-            print("ESP32 error:", e)
+            print("Failed to send to ESP32:", e)
 
     send(formatted_msg, broadcast=True)
 
