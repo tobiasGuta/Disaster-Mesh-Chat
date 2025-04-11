@@ -118,7 +118,7 @@ HTML = '''
         </div>
     </div>
 
-    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="/static/js/socket.io.min.js"></script>
     <script>
         var socket = io('http://192.168.137.1:5000', {
             transports: ['polling'],
@@ -214,6 +214,10 @@ def upload():
 @app.route('/uploads/<path:filename>')
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
+@app.route('/static/js/socket.io.min.js')
+def server_static_js(filename):
+    return send_from_directory('/static/js/', filename)
 
 @socketio.on('connect')
 def handle_connect():
