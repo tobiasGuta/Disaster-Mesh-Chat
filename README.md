@@ -5,6 +5,9 @@
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Offline Ready](https://img.shields.io/badge/offline-mesh--compatible-critical)
 
+![image](https://github.com/user-attachments/assets/7b27496f-40ef-473f-99e9-915dd43b9bb8)
+
+
 > Offline-first, peer-to-peer emergency chat system with ESP32 mesh fallback — designed for when the grid goes down.
 
 ---
