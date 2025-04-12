@@ -108,6 +108,31 @@ python disaster_chat_server_esp32.py
 
 - Uses message-forwarding logic to hop across nodes to reach the target.
 
+### ⚙️ How a Message Flows:
+
+```
+[User's Phone/Laptop]
+       |
+     Wi-Fi
+       ↓
+[Flask Chat on Raspberry Pi]
+       |
+     Serial
+       ↓
+   [ESP32]
+       |
+     UART
+       ↓
+ [LoRa Module]
+       |
+     Airwaves 🌍
+       ↓
+[Next Node → Another ESP32+LoRa]
+       ↓
+     Repeat
+       ↓
+[Target Node Receives & Displays Message]
+```
 
 ### Example
 
