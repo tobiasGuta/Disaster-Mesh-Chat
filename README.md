@@ -76,13 +76,6 @@ pip install -r requirements.txt
 python disaster_chat_server_esp32.py
 ```
 
-### 🔌 ESP32 Integration (Optional)
-Connect ESP32 via USB (adjust Serial('/dev/ttyUSB0', ...) path as needed)
-
-Used as a fallback broadcast when Socket.IO fails
-
-Mesh-compatible serial messages (basic demo, extendable)
-
 ### Chat GUI
 
 ![image]()
@@ -111,6 +104,13 @@ This prototype does not encrypt messages. For real deployments:
 ### Example
 
 - This is a demonstration of how I want to apply this project using the ESP32 and LoRa: https://youtu.be/9azEfCQNhSA
+
+### 🔌 ESP32 Integration (Optional)
+Connect ESP32 via USB (adjust Serial('/dev/ttyUSB0', ...) path as needed)
+
+Used as a fallback broadcast when Socket.IO fails
+
+Mesh-compatible serial messages (basic demo, extendable)
 
 ### 🤝 Contributing
 PRs, bug reports, and feedback welcome!
