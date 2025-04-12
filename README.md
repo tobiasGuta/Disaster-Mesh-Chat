@@ -83,6 +83,7 @@ python disaster_chat_server_esp32.py
 ### 💡 Future Ideas
 
 🧠 Your Ideal Setup (3-Part Architecture)
+
 ✅ 1. Raspberry Pi (the Brain):
 - Runs the Flask-SocketIO chat server.
 
