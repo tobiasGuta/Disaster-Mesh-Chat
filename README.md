@@ -85,7 +85,7 @@ Mesh-compatible serial messages (basic demo, extendable)
 
 ### Chat GUI
 
-![image](https://github.com/user-attachments/assets/7de8bfcd-d073-47d5-adaa-9b613196b836)
+![image]()
 
 
 ### 🔐 Security Warnings
