@@ -92,6 +92,10 @@ HTML = '''
         button:hover {
             background-color: #2ea043;
         }
+        a {
+            color: #58a6ff;
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body>
@@ -115,7 +119,7 @@ HTML = '''
 
         socket.on('message', function(msg) {
             var item = document.createElement('div');
-            item.textContent = msg;
+            item.innerHTML = msg;
             messages.appendChild(item);
             messages.scrollTop = messages.scrollHeight;
         });
@@ -127,7 +131,7 @@ HTML = '''
         socket.on('chat_history', function(history) {
             history.forEach(function(msg) {
                 var item = document.createElement('div');
-                item.textContent = msg;
+                item.innerHTML = msg;
                 messages.appendChild(item);
             });
             messages.scrollTop = messages.scrollHeight;
@@ -177,8 +181,15 @@ def handle_message(data):
     username = usernames_by_ip.get(user_ip, "Unknown")
     timestamp = datetime.now().strftime('%H:%M')
 
+    # If text message
     if isinstance(data, str):
-        formatted_msg = f'[{timestamp}] ({username}): {data}'
+        data = data.strip()
+        if data.lower().startswith('/map '):
+            location = data[5:].strip()
+            map_url = f"https://www.google.com/maps/search/?api=1&query={location.replace(' ', '+')}"
+            formatted_msg = f'[{timestamp}] ({username}): 📍 <a href="{map_url}" target="_blank">{location}</a>'
+        else:
+            formatted_msg = f'[{timestamp}] ({username}): {data}'
     else:
         formatted_msg = f'[{timestamp}] ({username}): {json.dumps(data)}'
 
