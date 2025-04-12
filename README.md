@@ -137,9 +137,9 @@ python disaster_chat_server_esp32.py
 🔥 Why This Setup Works Best:
 ```
 Component	                     Role	                            Benefit
-Raspberry Pi	                     Server & brain	Full control, logs, real-time chat, Python libraries
-ESP32	                            Bridge & AP	              Low power, great at UART + Wi-Fi combo
-LoRa (RYLR998)	              Mesh network	              Long range, offline, multi-hop
+Raspberry Pi	                   Server & brain	           Full control, logs, real-time chat, Python libraries
+ESP32	                          Bridge & AP	           Low power, great at UART + Wi-Fi combo
+LoRa (RYLR998)	               Mesh network	            Long range, offline, multi-hop
 ```
 
 ### Example
