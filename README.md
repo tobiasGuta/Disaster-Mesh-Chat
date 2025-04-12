@@ -80,19 +80,33 @@ python disaster_chat_server_esp32.py
 ![image](https://github.com/user-attachments/assets/81834e09-886f-4e30-895d-9e007c20fee2)
 
 
-### 🔐 Security Warnings
-This prototype does not encrypt messages. For real deployments:
-
-- Add HTTPS (WSS) support
-
-- Implement E2E encryption (NaCl, AES-GCM, etc.)
-
 ### 💡 Future Ideas
-- Decentralized peer-to-peer mesh over ESP-NOW / LoRa
 
-- E2E encrypted channels
+🧠 Your Ideal Setup (3-Part Architecture)
+✅ 1. Raspberry Pi (the Brain):
+- Runs the Flask-SocketIO chat server.
 
-- Offline-first progressive web app (PWA)
+- Handles user connections, message routing, and basic message logging.
+
+- Interfaces with the ESP32 over serial (UART) to send/receive LoRa messages.
+
+- Optional: Can act as a Wi-Fi access point too (but ESP32 is better for power).
+
+✅ 2. ESP32 (the Bridge):
+- Acts as the middleware between Raspberry Pi and LoRa.
+
+- Connected to LoRa via UART (e.g., RYLR998).
+
+- Can also be configured as a Wi-Fi access point for local clients if no Pi is present.
+
+- Converts JSON commands from Pi to LoRa packets and vice versa.
+
+✅ 3. LoRa (the Network):
+- The mesh transport layer — RYLR998 modules relay messages between nodes.
+
+- Set to the same frequency (868 or 915 MHz depending on region).
+
+- Uses message-forwarding logic to hop across nodes to reach the target.
 
 
 ### Example
@@ -116,12 +130,12 @@ Together, they form a mesh network, where messages can travel from node to node,
 This decentralized model empowers both cities and people to build a resilient communication system that stays up even when everything else goes down.
 
 
-### 🔌 ESP32 Integration (Optional)
-Connect ESP32 via USB (adjust Serial('/dev/ttyUSB0', ...) path as needed)
+### 🔐 Security Warnings
+This prototype does not encrypt messages. For real deployments:
 
-Used as a fallback broadcast when Socket.IO fails
+- Add HTTPS (WSS) support
 
-Mesh-compatible serial messages (basic demo, extendable)
+- Implement E2E encryption (NaCl, AES-GCM, etc.)
 
 ### 🤝 Contributing
 PRs, bug reports, and feedback welcome!
