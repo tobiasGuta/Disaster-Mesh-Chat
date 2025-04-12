@@ -78,7 +78,7 @@ python disaster_chat_server_esp32.py
 
 ### Chat GUI
 
-![image]()
+![image](https://github.com/user-attachments/assets/81834e09-886f-4e30-895d-9e007c20fee2)
 
 
 ### 🔐 Security Warnings
