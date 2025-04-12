@@ -23,9 +23,8 @@
 ## 🌐 Features
 
 ✅ Real-time chat over local network  
-✅ ESP32 serial/mesh fallback mode  
-✅ Geo-tagged messages (if browser supports GPS)  
-✅ Image upload + rendering  
+✅ ESP32 serial/ Lora mesh fallback mode  
+✅ Geo-tagged messages (if browser supports GPS)   
 ✅ Minimalistic, mobile-friendly dark UI  
 ✅ Stores last 50 messages for recovery  
 
@@ -40,7 +39,7 @@ This tool was built for disaster scenarios where:
 - 🛰️ Satellite or cell coverage is gone
 - 👥 People still need to communicate securely and fast
 
-Perfect for first responders, local communities, off-grid projects, or tech demos.
+Perfect for first responders, local communities.
 
 ---
 
@@ -86,8 +85,6 @@ This prototype does not encrypt messages. For real deployments:
 
 - Add HTTPS (WSS) support
 
-- Use authentication tokens
-
 - Implement E2E encryption (NaCl, AES-GCM, etc.)
 
 ### 💡 Future Ideas
@@ -97,13 +94,18 @@ This prototype does not encrypt messages. For real deployments:
 
 - Offline-first progressive web app (PWA)
 
-- Voice messages over ESP32
-
-- BLE fallback or QR-code pairing
 
 ### Example
 
 - This is a demonstration of how I want to apply this project using the ESP32 and LoRa: https://youtu.be/9azEfCQNhSA
+
+![image](https://github.com/user-attachments/assets/db8b7834-0adf-4710-a1f5-62ceafca4f26)
+
+In this example, Community A (Brooklyn) wants to send a message to Community D (The Bronx), but they’re too far apart for a direct LoRa connection.
+
+However, with LoRa and mesh networking, that's not a problem. The system automatically finds intermediate nodes, like Communities B and C, to relay the message. It hops across the network until it reaches the destination.
+
+This makes communication resilient, even if nodes are far apart, as long as there’s a path through the mesh.
 
 ### 🔌 ESP32 Integration (Optional)
 Connect ESP32 via USB (adjust Serial('/dev/ttyUSB0', ...) path as needed)
