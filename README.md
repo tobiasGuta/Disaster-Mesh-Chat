@@ -107,6 +107,15 @@ However, with LoRa and mesh networking, that's not a problem. The system automat
 
 This makes communication resilient, even if nodes are far apart, as long as there’s a path through the mesh.
 
+![image](https://github.com/user-attachments/assets/2054137c-ac0a-420d-aa09-644f82d1f359)
+
+Let’s say “E” represents city-owned LoRa nodes, and “R” represents individual residents or community members who’ve set up their own LoRa nodes.
+
+Together, they form a mesh network, where messages can travel from node to node, no matter who owns them, as long as they’re connected.
+
+This decentralized model empowers both cities and people to build a resilient communication system that stays up even when everything else goes down.
+
+
 ### 🔌 ESP32 Integration (Optional)
 Connect ESP32 via USB (adjust Serial('/dev/ttyUSB0', ...) path as needed)
 
