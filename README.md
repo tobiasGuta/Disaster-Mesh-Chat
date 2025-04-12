@@ -8,7 +8,7 @@
 ![image](https://github.com/user-attachments/assets/7b27496f-40ef-473f-99e9-915dd43b9bb8)
 
 
-> peer-to-peer emergency chat system with ESP32 mesh fallback  designed for when the grid goes down.
+> peer-to-peer emergency chat system with ESP32 + LoRa mesh fallback  designed for when the grid goes down.
 
 ---
 
